@@ -36,9 +36,8 @@ document.addEventListener('keydown', function (event) {
     }
 }, true);
 
-//TODO TEMP
-player.rotate(-8 + turningSpeed * 3);
-player.rotate(turningSpeed * 13);
+
+player.rotate(turningSpeed * 3);
 
 var canvasMinimap = document.getElementById("minimapCanvas");
 var ctxMinimap = canvasMinimap.getContext("2d");
@@ -63,18 +62,15 @@ setInterval(function () {
 function renderView(map) {
     for (screenX = 1; screenX <= canvasWidth; screenX++) {
 
-        //Calculate ray direction TODO à simplifier
-        var rayDir;
-        if (screenX < canvasWidth / 2) {
-            rayDir = new Vector2D(
-                (player.cameraPlane.x / (canvasWidth / 2)) * screenX + player.direction.x - player.cameraPlane.x,
-                (player.cameraPlane.y / (canvasWidth / 2)) * screenX + player.direction.y - player.cameraPlane.y
-            );
-        } else {
-            rayDir = new Vector2D(
-                (player.cameraPlane.x / (canvasWidth / 2)) * (screenX - canvasWidth / 2) + player.direction.x,
-                (player.cameraPlane.y / (canvasWidth / 2)) * (screenX - canvasWidth / 2) + player.direction.y
-            );
+        //Calculate ray direction
+        var positionInPane = (2 * screenX / canvasWidth) - 1;
+        var rayDir = new Vector2D(
+            player.direction.x + (player.cameraPlane.x * positionInPane),
+            player.direction.y + (player.cameraPlane.y * positionInPane)
+        );
+
+        if (screenX == 600) {
+            var zzzz = 0;
         }
 
         //Raycast
@@ -94,12 +90,6 @@ function renderView(map) {
             nextStep.y = Math.ceil(rayPos.y);
         }
 
-        if (nextStep.x < 0) {
-            nextStep.x = 0;
-        }
-        if (nextStep.y < 0) {
-            nextStep.y = 0;
-        }
 
         var sideHit;
         var hitPosition;
@@ -145,7 +135,7 @@ function renderView(map) {
                         hit = map[Math.floor(hitPosition.x)][nextStep.y];
                     }
                 }
-            }catch(err){
+            } catch (err) {
                 hit = -1;
             }
 
@@ -165,27 +155,27 @@ function renderView(map) {
             //Calcul du next step
             if (sideHit == "x") {
                 if (rayDir.x < 0) {
-                    nextStep.x = rayPos.x - 1;
+                    nextStep.x -= 1;
                 } else {
-                    nextStep.x = rayPos.x + 1;
+                    nextStep.x += 1;
                 }
 
                 if (rayDir.y < 0) {
-                    nextStep.y = Math.floor(rayPos.y);
+                    nextStep.y = Math.floor(nextStep.y);
                 } else {
-                    nextStep.y = Math.ceil(rayPos.y);
+                    nextStep.y = Math.ceil(nextStep.y);
                 }
             } else {
                 if (rayDir.x < 0) {
-                    nextStep.x = Math.floor(rayPos.x);
+                    nextStep.x = Math.floor(nextStep.x);
                 } else {
-                    nextStep.x = Math.ceil(rayPos.x);
+                    nextStep.x = Math.ceil(nextStep.x);
                 }
 
                 if (rayDir.y < 0) {
-                    nextStep.y = rayPos.y - 1;
+                    nextStep.y -= 1;
                 } else {
-                    nextStep.y = rayPos.y + 1;
+                    nextStep.y += 1;
                 }
             }
 
