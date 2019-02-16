@@ -1,15 +1,18 @@
 var colors = [];
+colors[-1] = "#ff00ee";
 colors[0] = "#ffffff";
 colors[1] = "#F00000";
 colors[2] = "#429bf4";
 
 var map = [
-    [2, 2, 1, 2, 1, 2],
-    [2, 0, 0, 0, 0, 1],
-    [1, 0, 0, 2, 0, 1],
-    [1, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1]
+    [2, 2, 1, 2, 1, 1, 2],
+    [2, 0, 0, 0, 0, 0, 2],
+    [1, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 2, 2, 2, 1]
 ];
 
 var turningSpeed = 15;
@@ -33,7 +36,8 @@ document.addEventListener('keydown', function (event) {
 }, true);
 
 //TODO TEMP
-player.rotate(-8);
+player.rotate(-8 + turningSpeed * 3);
+player.rotate(turningSpeed * 13);
 
 var canvasMinimap = document.getElementById("minimapCanvas");
 var ctxMinimap = canvasMinimap.getContext("2d");
@@ -45,9 +49,6 @@ var ctx = canvas.getContext("2d");
 var canvasWidth = canvas.width;
 var canvasHeight = canvas.height;
 
-
-var time = 0;   // TODO
-var oldTime = 0;// TODO
 
 setInterval(function () {
     drawMinimapGrid(map, ctxMinimap, canvasMinimapWidth, canvasMinimapHeight);
@@ -81,21 +82,21 @@ function renderView(map) {
 
         //Calcul du premier step 
         if (rayDir.x < 0) {
-            nextStep.x = Math.floor(rayPos.x) - 1;
+            nextStep.x = Math.floor(rayPos.x);
         } else {
             nextStep.x = Math.ceil(rayPos.x);
         }
 
         if (rayDir.y < 0) {
-            nextStep.y = Math.floor(rayPos.y) - 1;
+            nextStep.y = Math.floor(rayPos.y);
         } else {
             nextStep.y = Math.ceil(rayPos.y);
         }
 
-        if(nextStep.x < 0){
+        if (nextStep.x < 0) {
             nextStep.x = 0;
         }
-        if(nextStep.y < 0){
+        if (nextStep.y < 0) {
             nextStep.y = 0;
         }
 
@@ -128,12 +129,27 @@ function renderView(map) {
                 );
             }
 
-
             //Checker hit
-            if (sideHit == "x") {
-                hit = map[nextStep.x][Math.floor(rayPos.y)];
-            } else {
-                hit = map[Math.floor(rayPos.x)][nextStep.y];
+            try {
+                if (sideHit == "x") {
+                    if (rayDir.x < 0) {
+                        hit = map[nextStep.x - 1][Math.floor(hitPosition.y)];
+                    } else {
+                        hit = map[nextStep.x][Math.floor(hitPosition.y)];
+                    }
+                } else {
+                    if (rayDir.y < 0) {
+                        hit = map[Math.floor(hitPosition.x)][nextStep.y - 1];
+                    } else {
+                        hit = map[Math.floor(hitPosition.x)][nextStep.y];
+                    }
+                }
+            }catch(err){
+                hit = -1;
+            }
+
+            if (hit > 0) {
+                drawDot(hitPosition.x, hitPosition.y);
             }
 
             //Calcul du changement de position
@@ -154,13 +170,13 @@ function renderView(map) {
                 }
 
                 if (rayDir.y < 0) {
-                    nextStep.y = Math.floor(rayPos.y) - 1;
+                    nextStep.y = Math.floor(rayPos.y);
                 } else {
                     nextStep.y = Math.ceil(rayPos.y);
                 }
             } else {
                 if (rayDir.x < 0) {
-                    nextStep.x = Math.floor(rayPos.x) - 1;
+                    nextStep.x = Math.floor(rayPos.x);
                 } else {
                     nextStep.x = Math.ceil(rayPos.x);
                 }
@@ -171,36 +187,26 @@ function renderView(map) {
                     nextStep.y = rayPos.y + 1;
                 }
             }
-            if(nextStep.x < 0){
-                nextStep.x = 0;
-            }
-            if(nextStep.y < 0){
-                nextStep.y = 0;
-            }
+
         }
 
         //Calculer distance du hit pour le rendu
         var perpDistance;
         if (sideHit == "x") {
-            perpDistance = Math.abs(hitPosition.x - player.position.x)/rayDir.x;
+            perpDistance = Math.abs(hitPosition.x - player.position.x) / rayDir.x;
         } else {
-            perpDistance = Math.abs(hitPosition.y - player.position.y)/rayDir.y;
+            perpDistance = Math.abs(hitPosition.y - player.position.y) / rayDir.y;
         }
 
-        var columnHeight = canvasHeight/(perpDistance);
+        if (colors[hit] != undefined) {
+            var columnHeight = canvasHeight / (perpDistance);
+            var columnColor = colors[hit];
 
-        var columnColor = colors[hit];
-        //TEMP
-        if(columnColor == undefined){
-            throw new Error('Whoops!');
+            if (sideHit == "y") {
+                columnColor = shadeColor(columnColor, -30);
+            }
+            drawColumn(columnColor, screenX, columnHeight);
         }
-
-        //TEMP
-
-        if(sideHit == "y"){
-            columnColor = shadeColor(columnColor, -30);
-        }
-        drawColumn(columnColor, screenX, columnHeight);
     }
 }
 
@@ -219,6 +225,16 @@ function drawColumn(color, xPos, columnHeight) {
     ctx.stroke();
 }
 
+function drawDot(x, y) {
+    var minimapCellWidth = canvasMinimapWidth / map.length;
+    var minimapCellHeight = canvasMinimapHeight / map[0].length;
+
+    //Dessiner player
+    ctxMinimap.beginPath();
+    var radius = 3;
+    ctxMinimap.arc(x * minimapCellWidth, y * minimapCellHeight, radius, 0, 2 * Math.PI);
+    ctxMinimap.stroke();
+}
 
 
 function drawMinimapGrid(map, minimapContext, minimapWidth, minimapHeight) {
@@ -324,21 +340,21 @@ function drawLine(context, start, end, width) {
 
 function shadeColor(color, percent) {
 
-    var R = parseInt(color.substring(1,3),16);
-    var G = parseInt(color.substring(3,5),16);
-    var B = parseInt(color.substring(5,7),16);
+    var R = parseInt(color.substring(1, 3), 16);
+    var G = parseInt(color.substring(3, 5), 16);
+    var B = parseInt(color.substring(5, 7), 16);
 
     R = parseInt(R * (100 + percent) / 100);
     G = parseInt(G * (100 + percent) / 100);
     B = parseInt(B * (100 + percent) / 100);
 
-    R = (R<255)?R:255;  
-    G = (G<255)?G:255;  
-    B = (B<255)?B:255;  
+    R = (R < 255) ? R : 255;
+    G = (G < 255) ? G : 255;
+    B = (B < 255) ? B : 255;
 
-    var RR = ((R.toString(16).length==1)?"0"+R.toString(16):R.toString(16));
-    var GG = ((G.toString(16).length==1)?"0"+G.toString(16):G.toString(16));
-    var BB = ((B.toString(16).length==1)?"0"+B.toString(16):B.toString(16));
+    var RR = ((R.toString(16).length == 1) ? "0" + R.toString(16) : R.toString(16));
+    var GG = ((G.toString(16).length == 1) ? "0" + G.toString(16) : G.toString(16));
+    var BB = ((B.toString(16).length == 1) ? "0" + B.toString(16) : B.toString(16));
 
-    return "#"+RR+GG+BB;
+    return "#" + RR + GG + BB;
 }
