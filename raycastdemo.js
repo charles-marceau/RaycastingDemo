@@ -1,28 +1,34 @@
-var colors = [];
+const colors = [];
 colors[-1] = "#ff00ee";
 colors[0] = "#ffffff";
 colors[1] = "#F00000";
 colors[2] = "#429bf4";
 colors[3] = "#42f453";
+colors[4] = "#ef950e";
 
-var map = [
+const map = [
     [2, 2, 1, 2, 1, 1, 2],
     [2, 0, 0, 0, 0, 0, 2],
     [1, 0, 0, 0, 0, 0, 1],
     [1, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 3, 0, 0, 1],
-    [1, 0, 0, 3, 1, 0, 1],
+    [1, 0, 0, 3, 0, 0, 4],
+    [1, 0, 0, 3, 1, 0, 4],
+    [1, 0, 0, 0, 0, 0, 4],
+    [1, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 1],
+    [1, 4, 3, 4, 0, 4, 1],
+    [1, 0, 0, 0, 0, 0, 1],
     [1, 0, 0, 0, 0, 0, 1],
     [1, 1, 1, 2, 2, 2, 1]
 ];
 
-var turningSpeed = 15;
-var movementSpeed = 0.25;
+const turningSpeed = 15;
+const movementSpeed = 0.25;
 
-var playerPos = new Vector2D(1.5, 2);
-var playerDir = new Vector2D(0, -1);
-var cameraPlane = new Vector2D(1, 0);
-var player = new Player(playerPos, playerDir, cameraPlane);
+const initialPosition = new Vector2D(2, 2);
+const initialAngle = 0;
+const player = new Player(initialPosition, initialAngle);
 
 document.addEventListener('keydown', function (event) {
     if (event.keyCode == 65) {
@@ -36,48 +42,40 @@ document.addEventListener('keydown', function (event) {
     }
 }, true);
 
+const minimap = document.getElementById("minimapCanvas");
+const minimapContext = minimap.getContext("2d");
+const minimapWidth = minimap.width;
+const minimapHeight = minimap.height;
+const minimapCellWidth = minimapWidth / map.length;
+const minimapCellHeight = minimapHeight / map[0].length;
 
-player.rotate(turningSpeed * 3);
-
-var canvasMinimap = document.getElementById("minimapCanvas");
-var ctxMinimap = canvasMinimap.getContext("2d");
-var canvasMinimapWidth = canvasMinimap.width;
-var canvasMinimapHeight = canvasMinimap.height;
-
-var canvas = document.getElementById("myCanvas");
-var ctx = canvas.getContext("2d");
-var canvasWidth = canvas.width;
-var canvasHeight = canvas.height;
-
+const viewport = document.getElementById("viewportCanvas");
+const viewportContext = viewport.getContext("2d");
+const viewportWidth = viewport.width;
+const viewportHeight = viewport.height;
 
 setInterval(function () {
-    drawMinimapGrid(map, ctxMinimap, canvasMinimapWidth, canvasMinimapHeight);
-    drawMinimapPlayer(map, canvasMinimapWidth, canvasMinimapHeight, ctxMinimap, playerPos, playerDir, cameraPlane);
-    drawBackground("#000000");    // Clear screen
+    drawMinimapGrid(map, minimapContext, minimapWidth, minimapHeight);
+    drawPlayerOnMinimap(minimapContext, player);
+    drawRectangle(viewportContext, viewportWidth, viewportHeight, "#000000");
     renderView(map);
 }, 10);
 
-
-
 function renderView(map) {
-    for (screenX = 1; screenX <= canvasWidth; screenX++) {
+    for (screenX = 1; screenX <= viewportWidth; screenX++) {
 
         //Calculate ray direction
-        var positionInPane = (2 * screenX / canvasWidth) - 1;
-        var rayDir = new Vector2D(
+        const positionInPane = (2 * screenX / viewportWidth) - 1;
+        const rayDir = new Vector2D(
             player.direction.x + (player.cameraPlane.x * positionInPane),
             player.direction.y + (player.cameraPlane.y * positionInPane)
         );
 
-        if (screenX == 600) {
-            var zzzz = 0;
-        }
+        // Raycast
+        const rayPos = new Vector2D(player.position.x, player.position.y);
+        const nextStep = new Vector2D(null, null);
 
-        //Raycast
-        var rayPos = new Vector2D(player.position.x, player.position.y);
-        var nextStep = new Vector2D(null, null);
-
-        //Calcul du premier step 
+        // Compute first step
         if (rayDir.x < 0) {
             nextStep.x = Math.floor(rayPos.x);
         } else {
@@ -91,36 +89,36 @@ function renderView(map) {
         }
 
 
-        var sideHit;
-        var hitPosition;
-        var hit = 0;
+        let sideHit;
+        let hitPosition;
+        let hit = 0;
         while (hit == 0) {
 
-            //Calculer quel side est le plus proche
-            // Distance X
-            var xdx = nextStep.x - rayPos.x;
-            var xdy = rayDir.y * xdx / rayDir.x;
-            var distanceX = Math.sqrt(Math.pow(xdx, 2), Math.pow(xdy, 2));
-            // Distance Y
-            var ydy = nextStep.y - rayPos.y;
-            var ydx = rayDir.x * ydy / rayDir.y;
-            var distanceY = Math.sqrt(Math.pow(ydx, 2), Math.pow(ydy, 2));
+            // Compute which side is the closest
+            // X distance
+            const xDeltaX = nextStep.x - rayPos.x;
+            const xDeltaY = rayDir.y * xDeltaX / rayDir.x;
+            const distanceX = Math.sqrt(Math.pow(xDeltaX, 2), Math.pow(xDeltaY, 2));
+            // Y distance
+            const yDeltaY = nextStep.y - rayPos.y;
+            const yDeltaX = rayDir.x * yDeltaY / rayDir.y;
+            const distanceY = Math.sqrt(Math.pow(yDeltaX, 2), Math.pow(yDeltaY, 2));
 
             if (distanceX <= distanceY) {
                 sideHit = "x";
                 hitPosition = new Vector2D(
-                    rayPos.x + xdx,
-                    rayPos.y + xdy
+                    rayPos.x + xDeltaX,
+                    rayPos.y + xDeltaY
                 );
             } else {
                 sideHit = "y";
                 hitPosition = new Vector2D(
-                    rayPos.x + ydx,
-                    rayPos.y + ydy
+                    rayPos.x + yDeltaX,
+                    rayPos.y + yDeltaY
                 );
             }
 
-            //Checker hit
+            // Check if the ray hit a wall
             try {
                 if (sideHit == "x") {
                     if (rayDir.x < 0) {
@@ -140,19 +138,19 @@ function renderView(map) {
             }
 
             if (hit > 0) {
-                drawDot(hitPosition.x, hitPosition.y);
+                drawDot(minimapContext, hitPosition.x * minimapCellWidth, hitPosition.y * minimapCellHeight);
             }
 
-            //Calcul du changement de position
+            // Compute ray forward movement
             if (sideHit == "x") {
-                rayPos.x = rayPos.x + xdx;
-                rayPos.y = rayPos.y + xdy;
+                rayPos.x = rayPos.x + xDeltaX;
+                rayPos.y = rayPos.y + xDeltaY;
             } else {
-                rayPos.x = rayPos.x + ydx;
-                rayPos.y = rayPos.y + ydy;
+                rayPos.x = rayPos.x + yDeltaX;
+                rayPos.y = rayPos.y + yDeltaY;
             }
 
-            //Calcul du next step
+            // Compute next step
             if (sideHit == "x") {
                 if (rayDir.x < 0) {
                     nextStep.x -= 1;
@@ -181,64 +179,32 @@ function renderView(map) {
 
         }
 
-        //Calculer distance du hit pour le rendu
-        var perpDistance;
+        // Compute hit distance to player
+        let hitDistance;
         if (sideHit == "x") {
-            perpDistance = Math.abs(hitPosition.x - player.position.x) / rayDir.x;
+            hitDistance = Math.abs(hitPosition.x - player.position.x) / rayDir.x;
         } else {
-            perpDistance = Math.abs(hitPosition.y - player.position.y) / rayDir.y;
+            hitDistance = Math.abs(hitPosition.y - player.position.y) / rayDir.y;
         }
 
         if (colors[hit] != undefined) {
-            var columnHeight = canvasHeight / (perpDistance);
-            var columnColor = colors[hit];
-
-            if (sideHit == "y") {
-                columnColor = shadeColor(columnColor, -30);
-            }
-            drawColumn(columnColor, screenX, columnHeight);
+            const columnHeight = viewportHeight / (hitDistance);
+            const columnColor = sideHit == "y" ? shadeColor(colors[hit], -30):colors[hit];
+            drawColumn(viewportContext, columnColor, screenX, viewportHeight, columnHeight);
         }
     }
 }
 
-function drawBackground(color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-}
-
-function drawColumn(color, xPos, columnHeight) {
-    ctx.beginPath();
-    var startPosY = (canvasHeight - columnHeight) / 2;
-    var endPosY = startPosY + columnHeight;
-    ctx.moveTo(xPos, startPosY);
-    ctx.lineTo(xPos, endPosY);
-    ctx.strokeStyle = color;
-    ctx.stroke();
-}
-
-function drawDot(x, y) {
-    var minimapCellWidth = canvasMinimapWidth / map.length;
-    var minimapCellHeight = canvasMinimapHeight / map[0].length;
-
-    //Dessiner player
-    ctxMinimap.beginPath();
-    var radius = 3;
-    ctxMinimap.arc(x * minimapCellWidth, y * minimapCellHeight, radius, 0, 2 * Math.PI);
-    ctxMinimap.stroke();
-}
-
-
 function drawMinimapGrid(map, minimapContext, minimapWidth, minimapHeight) {
-
     minimapContext.clearRect(0, 0, minimapWidth, minimapHeight);
 
-    var minimapCellWidth = minimapWidth / map.length;
-    var minimapCellHeight = minimapHeight / map[0].length;
+    const minimapCellWidth = minimapWidth / map.length;
+    const minimapCellHeight = minimapHeight / map[0].length;
 
     for (x = 0; x < map.length; x++) {
-        var currentColumn = minimapCellWidth * x;
+        const currentColumn = minimapCellWidth * x;
         for (y = 0; y < map[0].length; y++) {
-            var currentRow = minimapCellHeight * y
+            const currentRow = minimapCellHeight * y
             minimapContext.lineWidth = 1;
             minimapContext.beginPath();
             minimapContext.moveTo(minimapCellWidth * x, 0);
@@ -254,98 +220,55 @@ function drawMinimapGrid(map, minimapContext, minimapWidth, minimapHeight) {
     }
 }
 
-function drawMinimapPlayer(map, minimapWidth, minimapHeight, minimapContext, playerPos, playerDir, cameraPlane) {
-    var minimapCellWidth = minimapWidth / map.length;
-    var minimapCellHeight = minimapHeight / map[0].length;
-
-    //Dessiner player
+function drawPlayerOnMinimap(minimapContext, player) {
+    // Draw player circle
     minimapContext.beginPath();
-    var radius = 10;
+    const radius = 10;
     minimapContext.arc(player.position.x * minimapCellWidth, player.position.y * minimapCellHeight, radius, 0, 2 * Math.PI);
     minimapContext.stroke();
 
-    //Dessiner ligne Dir 
-    var start = [
-        player.position.x * minimapCellWidth,
-        player.position.y * minimapCellHeight
-    ];
-    var end = [
+    // Draw field of view
+    // Front right
+    const frontRightStart = [
         (player.position.x + player.direction.x) * minimapCellWidth,
         (player.position.y + player.direction.y) * minimapCellHeight
     ];
-    drawLine(minimapContext, start, end, 4);
-
-    // Dessiner pane
-    // Coté droit haut
-    var start = [
-        (player.position.x + player.direction.x) * minimapCellWidth,
-        (player.position.y + player.direction.y) * minimapCellHeight
-    ];
-    var end = [
+    const frontRightEnd = [
         (player.position.x + player.direction.x + player.cameraPlane.x) * minimapCellWidth,
         (player.position.y + player.direction.y + player.cameraPlane.y) * minimapCellHeight
     ];
-    drawLine(minimapContext, start, end, 4);
+    drawLine(minimapContext, frontRightStart, frontRightEnd, 4);
 
-    // Coté droit diagonal
-    var start = [
+    // Right side
+    const rightSideStart = [
         (player.position.x) * minimapCellWidth,
         (player.position.y) * minimapCellHeight
     ];
-    var end = [
+    const rightSideEnd = [
         (player.position.x + player.direction.x + player.cameraPlane.x) * minimapCellWidth,
         (player.position.y + player.direction.y + player.cameraPlane.y) * minimapCellHeight
     ];
-    drawLine(minimapContext, start, end, 4);
+    drawLine(minimapContext, rightSideStart, rightSideEnd, 4);
 
-    // Coté gauche haut
-    var start = [
+    // Front left
+    const frontLeftStart = [
         (player.position.x + player.direction.x) * minimapCellWidth,
         (player.position.y + player.direction.y) * minimapCellHeight
     ];
-    var end = [
+    const frontLeftEnd = [
         (player.position.x + player.direction.x - player.cameraPlane.x) * minimapCellWidth,
         (player.position.y + player.direction.y - player.cameraPlane.y) * minimapCellHeight
     ];
-    drawLine(minimapContext, start, end, 4);
+    drawLine(minimapContext, frontLeftStart, frontLeftEnd, 4);
 
-    // Coté gauche diagonal
-    var start = [
+    // Left side
+    const leftSideStart = [
         (player.position.x) * minimapCellWidth,
         (player.position.y) * minimapCellHeight
     ];
-    var end = [
+    const leftSideEnd = [
         (player.position.x + player.direction.x - player.cameraPlane.x) * minimapCellWidth,
         (player.position.y + player.direction.y - player.cameraPlane.y) * minimapCellHeight
     ];
-    drawLine(minimapContext, start, end, 4);
-}
-
-function drawLine(context, start, end, width) {
-    context.beginPath();
-    context.moveTo(start[0], start[1]);
-    context.lineWidth = width;
-    context.lineTo(end[0], end[1]);
-    context.stroke();
-}
-
-function shadeColor(color, percent) {
-
-    var R = parseInt(color.substring(1, 3), 16);
-    var G = parseInt(color.substring(3, 5), 16);
-    var B = parseInt(color.substring(5, 7), 16);
-
-    R = parseInt(R * (100 + percent) / 100);
-    G = parseInt(G * (100 + percent) / 100);
-    B = parseInt(B * (100 + percent) / 100);
-
-    R = (R < 255) ? R : 255;
-    G = (G < 255) ? G : 255;
-    B = (B < 255) ? B : 255;
-
-    var RR = ((R.toString(16).length == 1) ? "0" + R.toString(16) : R.toString(16));
-    var GG = ((G.toString(16).length == 1) ? "0" + G.toString(16) : G.toString(16));
-    var BB = ((B.toString(16).length == 1) ? "0" + B.toString(16) : B.toString(16));
-
-    return "#" + RR + GG + BB;
+    drawLine(minimapContext, leftSideStart, leftSideEnd, 4);
 }
