@@ -1,7 +1,8 @@
 
 
 ## Raycasting Demo
-The raycasting is very basic and there is no collision detection but this is only a proof of concept made to practice working with vectors.
+This is a raycasting demo I have made a few years ago to practice working with vectors.
+The raycasting is very basic and there is no collision detection but this is only a proof of concept made for fun.
 
 ### Features
 - Raycasting in plain old JavaScript (no library needed).
